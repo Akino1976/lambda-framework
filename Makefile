@@ -62,3 +62,9 @@ clear-volumes: clear-all-containers
 
 clear-images: clear-volumes
 	docker images -q | uniq | xargs -I@ docker rmi -f @
+
+create-persistence:
+	aws cloudformation create-stack --template-body file://infrastructure/cfn-bi-framework.persistence.yml \
+	--stack-name lambda-framework \
+	--profile aws-private \
+	--region eu-west-1
