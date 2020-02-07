@@ -1,10 +1,10 @@
 import os
 import pytest
 
+from typing import Dict, Any
+
 from datetime import date
 import datetime
-import dateutil.relativedelta
-from dateutil.tz import *
 
 
 @pytest.fixture
@@ -16,13 +16,18 @@ def headers():
 
 
 @pytest.fixture
-def entrypoint():
-    return []
+def request_headers() -> Dict[str, Any]:
+    return dict()
 
 
 @pytest.fixture
-def command():
-    return []
+def base_url() -> str:
+    return ""
+
+
+@pytest.fixture
+def request_body() -> Dict[str, Any]:
+    return dict()
 
 
 @pytest.fixture
@@ -64,11 +69,6 @@ def upload_date():
 @pytest.fixture
 def client():
     pass
-
-
-@pytest.fixture
-def to_date():
-    return int((date.today() + dateutil.relativedelta.relativedelta(months=-1)).strftime('%Y%m'))
 
 
 @pytest.fixture

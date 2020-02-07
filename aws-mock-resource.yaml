@@ -1,0 +1,7 @@
+version: '1.0'
+
+resources:
+
+  input_bucket:
+    type: bucket
+    name: bi-framework-data-lake-docker-eu-west-1

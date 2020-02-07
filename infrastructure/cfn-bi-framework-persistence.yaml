@@ -16,7 +16,7 @@ Parameters:
   ServiceName:
     Description: The name of the service
     Type: String
-    Default: bi-framework
+    Default: ${ServiceName}
 
 Mappings:
 
@@ -142,7 +142,7 @@ Resources:
         - Key: Name
           Value: !Sub ${ServiceName}-datalake
         - Key: Component
-          Value: !Ref ServiceName
+          Value: !Sub ${ServiceName}
         - Key: Environment
           Value: !Ref Environment
         - Key: BusinessArea
@@ -210,13 +210,13 @@ Resources:
   BiLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub bi-frame-work-${Environment}-${AWS::Region}
+      FunctionName: !Sub ${ServiceName}-${Environment}-${AWS::Region}
       Code:
         S3Bucket: !FindInMap [EnvMap, !Ref Environment, LambdaFunctionsBucketName]
-        S3Key: !Sub bi-file-formatter/handlers-pkg.${Version}.zip
+        S3Key: !Sub ${ServiceName}/handlers-pkg.${Version}.zip
       Role: !GetAtt LambdaRole.Arn
       Timeout: 900
-      Handler: file_slicer.handle_bucket_event
+      Handler: lambda_function.handle_event
       Runtime: python3.6
       MemorySize: 3008
       Environment:
@@ -224,7 +224,7 @@ Resources:
           VERSION: !Ref Version
           ENVIRONMENT: !Ref Environment
           APP_LOG_STYLE: json
-          APP_NAME: bi-framework
+          APP_NAME: ${ServiceName}
           APP_COMPONENT: file_slicer
           INPUT_BUCKET: !FindInMap [EnvMap, !Ref Environment, InputBucket]
       DeadLetterConfig:

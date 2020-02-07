@@ -1,21 +1,22 @@
-FROM app-framework as app
-FROM python:3.7-alpine3.10
+FROM python:3.7-alpine3.10 as builder
 
-ARG BAMBORA_PYPI_USERNAME
-ARG BAMBORA_PYPI_PASSWORD
+ARG PYPI_USERNAME
+ARG PYPI_PASSWORD
 
 RUN apk add --no-cache gettext
 RUN pip install wheel
 
-COPY --from=app /usr/app /usr/app
+COPY requirements.txt /tmp/requirements.txt
+RUN pip wheel -w /wheelhouse -r /tmp/requirements.txt
 
-COPY . /usr/systemtests
-WORKDIR /usr/systemtests
+FROM python:3.7-alpine3.10
 
-RUN pip install -r /usr/systemtests/requirements.txt
-RUN pip install -r /usr/app/requirements.txt
-ENV PYTHONPATH=$PYTHONPATH:/usr/src
+COPY --from=builder /wheelhouse /wheelhouse
+COPY requirements.txt /tmp/requirements.txt
 
-EXPOSE 1433
+RUN pip install -r /tmp/requirements.txt --no-index --find-links /wheelhouse
+
+COPY . /systemtests
+WORKDIR /systemtests
 
 ENTRYPOINT ["py.test", "-c", "pytest.cfg"]

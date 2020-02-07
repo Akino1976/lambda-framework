@@ -1,29 +1,52 @@
 import os
 import sys
-import subprocess
+import logging
+
+from typing import Any, Dict
+
+import requests
 
 from pytest_bdd import when, parsers
 
-@when('the app is called from the command line')
-def call_app_from_command_line(entrypoint, command, flags, request):
+import helpers.utils as utils
 
-    flags_list = flags.split()
-    cmd = [*entrypoint, *command, *flags_list]
 
-    process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
+logger = logging.getLogger('bi-framework')
 
-    stderr_value = str(process.stderr.read(), 'utf-8')
-    if stderr_value:
-        print('------- Captured stderr from application -----')
-        print(stderr_value)
 
-    stdoutdata, stderrdata = process.communicate()
-    process.stdoutdata = str(stdoutdata, 'utf-8')
-    process.stderrdata = str(stderrdata, 'utf-8')
-    request.process = process
+@when(parsers.parse('I make a {request_type} request to {url}'))
+def make_request(request: Any,
+                 request_headers: Dict[str, Any],
+                 request_body: Dict[str, Any],
+                 request_type: str,
+                 base_url: str,
+                 url: str):
+    logger.info(f'Setting up request url based on the yaml spec:\n{utils.pretty_format(url)}')
 
-    process.kill()
+    try:
+        url = utils.yaml.load_with_tags(request, url)
+
+        logger.info(f'Request url set to:\n{utils.pretty_format(url)}')
+
+        callable = getattr(requests, request_type.lower())
+
+        logger.info(f'Making {request_type} request to:\n{utils.pretty_format(base_url + url)}')
+
+        request.return_value = callable(
+            f'{base_url}{url}',
+            headers=request_headers,
+            json=request_body if request_body else None
+        )
+
+        try:
+            response = request.return_value.json()
+        except ValueError:
+            response = request.return_value.text
+
+        LOGGER.info(f'Request response:\n{utils.pretty_format(response)}')
+
+    except Exception as exception:
+        msg = f'{type(exception)}\n{exception}'
+        logger.info(f'The request raised the exception:\n{utils.pretty_format(msg)}')
+
+        request.raised_exception = exception
