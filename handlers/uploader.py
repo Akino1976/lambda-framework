@@ -20,6 +20,5 @@ def get_sdisk_files(location='/Users/serdarakin/Desktop') -> List[str]:
     return sdisk_files
 
 
-
 if __name__ == '__main__':
     print(get_sdisk_files())

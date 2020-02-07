@@ -1,6 +1,8 @@
 import functools
 import inspect
 import io
+import pprint
+import textwrap
 
 from typing import Any, Type, Optional
 
@@ -49,3 +51,10 @@ def references_tag(loader, tag_suffix, node):
         raise ContextError(f"'{tag_suffix}' is not a valid context")
 
     return value
+
+
+def pretty_format(obj: Any) -> str:
+    if not isinstance(obj, str):
+        obj = pprint.pformat(obj)
+
+    return textwrap.indent(obj, ' ' * 4) + '\n'

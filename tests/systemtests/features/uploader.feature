@@ -1,8 +1,5 @@
 Feature: A call to uploader file
 
   Scenario: Reporter runs without error
-    Given the entrypoint "python"
-    And the command "/usr/src/uploader.py"
-    And the flags "-e docker"
-    When the app is called from the command line
-    Then the return code should be 0
+    Given the bucket bi-framework-data-lake-docker-eu-west-1 is empty
+    When I make a POST request to http://lambdaserver/invoke/lambda_function.handle_event

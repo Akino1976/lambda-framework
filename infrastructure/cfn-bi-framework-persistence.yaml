@@ -1,0 +1,261 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: Business Intelligence persistence infrastructure
+
+Parameters:
+
+  Environment:
+    Description: Environment to deploy to.
+    Type: String
+    Default: test
+    AllowedValues:
+      - dev
+      - test
+      - prod
+
+  ServiceName:
+    Description: The name of the service
+    Type: String
+    Default: ${ServiceName}
+
+Mappings:
+
+  EnvMap:
+    dev:
+      LambdaFunctionsBucketName: bi-lambdafunctions-dev
+      InputBucket: !Sub ${ServiceName}-data-lake-dev
+      OutputBucket: bambora-bi-storage-formatted-dev
+    test:
+      LambdaFunctionsBucketName: bi-ambdafunctions-test-eu-west-1
+      InputBucket: !Sub ${ServiceName}-data-lake-test
+      OutputBucket: bambora-bi-storage-formatted-test-eu-west-1
+    prod:
+      LambdaFunctionsBucketName: bi-lambdafunctions-prod-eu-west-1
+      InputBucket: !Sub ${ServiceName}-data-lake-prod
+      OutputBucket: bambora-bi-storage-formatted-prod-eu-west-1
+
+Resources:
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaPolicy1
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action: 's3:*'
+              Resource: !Join ["", ["arn:aws:s3:::", !Ref DataLakeBucket, "/*"]]
+        - PolicyName: LambdaPolicy3
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action: 'cloudwatch:*'
+              Resource: "*"
+        - PolicyName: LambdaPolicy4
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                - logs:DescribeLogStreams
+              Resource: "arn:aws:logs:*:*:*"
+        - PolicyName: LambdaPolicy5
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action: logs:CreateLogGroup
+              Resource: !Sub arn:aws:logs:${AWS::Region}::${AWS::AccountId}:*
+
+  DataLakeBucket:
+    Type: AWS::S3::Bucket
+    DependsOn: InternalNotificationsTopic
+    Properties:
+      BucketName: !FindInMap [EnvMap, !Ref Environment, InputBucket]
+      NotificationConfiguration:
+        TopicConfigurations:
+          - Event: s3:ObjectCreated:Put
+            Topic: !Ref InternalNotificationsTopic
+          - Event: s3:ObjectCreated:Copy
+            Topic: !Ref InternalNotificationsTopic
+          - Event: s3:ObjectCreated:Post
+            Topic: !Ref InternalNotificationsTopic
+          - Event: s3:ObjectCreated:CompleteMultipartUpload
+            Topic: !Ref InternalNotificationsTopic
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DataLakeBucket
+      PolicyDocument:
+        Statement:
+          -
+            Sid: "ABC123"
+            Action:
+              - "s3:*"
+            Effect: Allow
+            Resource: !Join ["", ["arn:aws:s3:::", !Ref DataLakeBucket, "/*"]]
+            Principal:
+              AWS: "arn:aws:iam::799052614850:user/akino"
+
+  DataLakeDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 1209600
+      QueueName: !Sub ${ServiceName}-data-lake-dead-letter-queue-${Environment}-${AWS::Region}
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 30
+
+  DataLakeQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 1209600
+      QueueName: !Sub ${ServiceName}-data-lake-queue-${Environment}-${AWS::Region}
+      ReceiveMessageWaitTimeSeconds: 20
+      VisibilityTimeout: 3600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DataLakeDeadLetterQueue.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Name
+          Value: !Sub ${ServiceName}-datalake
+        - Key: Component
+          Value: !Sub ${ServiceName}
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: BusinessArea
+          Value: BusinessIntelligence
+        - Key: InfrastructureType
+          Value: Storage
+        - Key: Access
+          Value: Internal
+
+  InternalNotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub ${ServiceName}-internal-notifications-${Environment}-${AWS::Region}
+      TopicName: !Sub ${ServiceName}-internal-notifications-${Environment}-${AWS::Region}
+
+  InternalNotificationsubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      Endpoint: !GetAtt DataLakeQueue.Arn
+      TopicArn: !Ref InternalNotificationsTopic
+
+  InternalNotificationsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref InternalNotificationsTopic
+      PolicyDocument:
+        Version: 2012-10-17
+        Id: __default_policy_ID
+        Statement:
+          - Sid: __default_statement_ID
+            Effect: Allow
+            Principal:
+              AWS: !Ref DataLakeBucket
+            Action:
+              - 'SNS:GetTopicAttributes'
+              - 'SNS:SetTopicAttributes'
+              - 'SNS:AddPermission'
+              - 'SNS:RemovePermission'
+              - 'SNS:DeleteTopic'
+              - 'SNS:Subscribe'
+              - 'SNS:ListSubscriptionsByTopic'
+              - 'SNS:Publish'
+              - 'SNS:Receive'
+            Resource: !Ref InternalNotificationsTopic
+
+  InternalNotifications:
+    Type: AWS::SQS::Queue
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DataLakeQueue.Arn
+            Condition:
+              ArnEquals:
+                SourceArn: !Ref InternalNotificationsTopic
+      Queues:
+        - !Ref DataLakeQueue
+
+  BiLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ServiceName}-${Environment}-${AWS::Region}
+      Code:
+        S3Bucket: !FindInMap [EnvMap, !Ref Environment, LambdaFunctionsBucketName]
+        S3Key: !Sub ${ServiceName}/handlers-pkg.${Version}.zip
+      Role: !GetAtt LambdaRole.Arn
+      Timeout: 900
+      Handler: lambda_function.handle_event
+      Runtime: python3.6
+      MemorySize: 3008
+      Environment:
+        Variables:
+          VERSION: !Ref Version
+          ENVIRONMENT: !Ref Environment
+          APP_LOG_STYLE: json
+          APP_NAME: ${ServiceName}
+          APP_COMPONENT: file_slicer
+          INPUT_BUCKET: !FindInMap [EnvMap, !Ref Environment, InputBucket]
+      DeadLetterConfig:
+        TargetArn: !GetAtt DataLakeDeadLetterQueue.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub bi-file-slicer-all
+        - Key: Component
+          Value: !Ref ServiceName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: BusinessArea
+          Value: BusinessIntelligence
+        - Key: InfrastructureType
+          Value: Application/Service
+        - Key: Access
+          Value: Internal
+
+  InternalSlicerNotificationsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FileSlicerFunction
+      Action: lambda:InvokeFunction
+      Principal: sqs.amazonaws.com
+
+  InternalFunctionEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      Enabled: true
+      EventSourceArn: !GetAtt InternalNotifications.Arn
+      FunctionName: !GetAtt FileFormatterFunction.Arn
+
+
