@@ -3,13 +3,13 @@ version: '2'
 services:
 
   unittests-base:
-    image: unittests-bi-framework-integration:${VERSION}
+    image: unittests-bi-framework:${VERSION}
     build:
       context: tests/unittests
       dockerfile: Dockerfile
       args:
-        BAMBORA_PYPI_USERNAME: ${PYPI_USERNAME}
-        BAMBORA_PYPI_PASSWORD: ${PYPI_PASSWORD}
+        PYPI_USERNAME: ${PYPI_USERNAME}
+        PYPI_PASSWORD: ${PYPI_PASSWORD}
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       AWS_REGION: ${AWS_REGION}
@@ -44,13 +44,13 @@ services:
       - ./handlers:/tmp/handlers
 
   systemtests-base:
-    image: systemtests-bi-framework-integration:${VERSION}
+    image: systemtests-bi-framework:${VERSION}
     build:
       context: tests/systemtests
       dockerfile: Dockerfile
       args:
-        BAMBORA_PYPI_USERNAME: ${PYPI_USERNAME}
-        BAMBORA_PYPI_PASSWORD: ${PYPI_PASSWORD}
+        PYPI_USERNAME: ${PYPI_USERNAME}
+        PYPI_PASSWORD: ${PYPI_PASSWORD}
     environment:
       S3_HOST: aws-mock:3000
       PYTHONDONTWRITEBYTECODE: 1
@@ -71,7 +71,7 @@ services:
       service: systemtests-base
       file: docker-compose.test.yaml
     entrypoint: ptw
-    command: --ext=py,feature --ignore=/.cache/** --config pytest.cfg -p --pdb
+    command: --ext=py,feature --ignore=/.cache/** --config pytest.cfg -p
     volumes:
       - ./tests/systemtests:/systemtests
     links:

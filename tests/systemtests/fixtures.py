@@ -72,11 +72,6 @@ def client():
 
 
 @pytest.fixture
-def none():
-    return None
-
-
-@pytest.fixture
 def yesterday_date():
     yesterday = datetime.datetime.now() - datetime.timedelta(days = 1)
     return yesterday.strftime('%Y-%m-%d')

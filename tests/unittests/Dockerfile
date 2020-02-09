@@ -1,8 +1,8 @@
 FROM app-framework  as app
 FROM python:3.7-alpine3.10
 
-ARG BAMBORA_PYPI_USERNAME
-ARG BAMBORA_PYPI_PASSWORD
+ARG PYPI_USERNAME
+ARG PYPI_PASSWORD
 
 RUN apk add --no-cache gettext
 RUN pip install wheel
