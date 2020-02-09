@@ -24,7 +24,7 @@ def make_request(request: Any,
     logger.info(f'Setting up request url based on the yaml spec:\n{utils.pretty_format(url)}')
 
     try:
-        url = utils.yaml.load_with_tags(request, url)
+        url = utils.load_with_tags(request, url)
 
         logger.info(f'Request url set to:\n{utils.pretty_format(url)}')
 
