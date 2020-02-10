@@ -11,6 +11,7 @@ class MatchAll(type):
     def __instancecheck__(self, instance):
         return True
 
+
 class CompareSingleValueMeta(metaclass=MatchAll):
     def __init__(self, value: str):
         self.value = value
@@ -35,8 +36,6 @@ class IgnoreSurroundingWhitespace(CompareSingleValueMeta):
             return other.strip() == self.value.strip()
 
         return False
-
-
 
 
 @yaml_tag('!IgnoreSurroundingWhitespace')
@@ -114,6 +113,7 @@ def as_sqs_message(loader, tag_suffix, node):
             }
         ]
     }
+
 
 class ContainsString(CompareSingleValueMeta):
     def __eq__(self, other):
