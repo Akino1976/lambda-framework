@@ -25,7 +25,7 @@ def make_request(request: Any,
 
     try:
         url = utils.load_with_tags(request, url)
-
+        import pdb; pdb.set_trace()
         logger.info(f'Request url set to:\n{utils.pretty_format(url)}')
 
         callable = getattr(requests, request_type.lower())
