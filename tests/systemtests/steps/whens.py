@@ -2,7 +2,8 @@ import os
 import sys
 import logging
 
-from typing import Any, Dict
+from typing import Any, Dict, Callable, List
+from types import ModuleType
 
 import requests
 
@@ -14,6 +15,21 @@ import helpers.utils as utils
 logger = logging.getLogger('bi-framework')
 
 
+@when(parsers.parse('I call the {callable_path} function'))
+def call_callable(request: Any, callable_path: str, parameters: Dict[str, Any], module: ModuleType):
+    module = importlib.import_module(module)
+
+    callable = getattr(module, callable_path)
+
+    try:
+        request.return_value = callable(**parameters)
+
+    except Exception as exception:
+        LOGGER.exception(f'Exception in when calling {callable_path}')
+
+        request.raised_exception = exception
+
+
 @when(parsers.parse('I make a {request_type} request to {url}'))
 def make_request(request: Any,
                  request_headers: Dict[str, Any],
@@ -21,11 +37,11 @@ def make_request(request: Any,
                  request_type: str,
                  base_url: str,
                  url: str):
-    logger.info(f'Setting up request url based on the yaml spec:\n{utils.pretty_format(url)}')
+    logger.debug(f'Setting up request url based on the yaml spec:\n{utils.pretty_format(url)}')
 
     try:
         url = utils.load_with_tags(request, url)
-        import pdb; pdb.set_trace()
+
         logger.info(f'Request url set to:\n{utils.pretty_format(url)}')
 
         callable = getattr(requests, request_type.lower())
@@ -43,7 +59,7 @@ def make_request(request: Any,
         except ValueError:
             response = request.return_value.text
 
-        LOGGER.info(f'Request response:\n{utils.pretty_format(response)}')
+        logger.info(f'Request response:\n{utils.pretty_format(response)}')
 
     except Exception as exception:
         msg = f'{type(exception)}\n{exception}'
