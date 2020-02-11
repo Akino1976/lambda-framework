@@ -1,2 +1,7 @@
+import json
+
+from typing import Dict, Any
+
+
 def handle_event(event: Dict[str, Any], context: object):
-    print("Hello")
+    return json.dumps(dict(hello='World'))
