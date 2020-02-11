@@ -69,7 +69,7 @@ unittest-watch: build-app mock-provision
 	docker-compose $(COMPOSE_TEST_FLAGS) run --rm unittest-watch
 
 systemtests: build-systemtests setup-local-environment
-	docker-compose $(COMPOSE_TEST_FLAGS) run --rm systemtests
+	docker-compose $(COMPOSE_TEST_FLAGS) run --rm --service-ports systemtests
 
 systemtests-watch: build-systemtests setup-local-environment
 	docker-compose $(COMPOSE_TEST_FLAGS) run --rm systemtests-watch

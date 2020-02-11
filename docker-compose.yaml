@@ -4,9 +4,6 @@ services:
 
   package:
     image: akino1976/lambda-packer
-    environment:
-      - PYPI_USERNAME
-      - PYPI_PASSWORD
     command: ${PACKAGE_NAME}
     volumes:
       - ./handlers:/app/src
@@ -23,7 +20,7 @@ services:
       APP_LOG_STYLE: text
       APP_NAME: bi-framework
       APP_COMPONENT: data_integration
-      INPUT_BUCKET: bi-framework--data-lake-docker-eu-west-1
+      INPUT_BUCKET: bi-framework-data-lake-docker-eu-west-1
       PACKAGE_NAME: ${PACKAGE_NAME}
     volumes:
       - ./tools/awsmock-credentials:/root/.aws/credentials
@@ -32,33 +29,36 @@ services:
     extends:
       service: lambdaserver-base
       file: docker-compose.yaml
+    ports:
+      - 80
     volumes:
-      - ./packages:/packages
+      - ./packages/${PACKAGE_NAME}:/packages/${PACKAGE_NAME}
 
   lambdaserver-watch:
     extends:
       service: lambdaserver-base
       file: docker-compose.yaml
     environment:
-      BAMBORA_PYPI_USERNAME: ${PYPI_USERNAME}
-      BAMBORA_PYPI_PASSWORD: ${PYPI_PASSWORD}
+      RUN_IN_WATCH_MODE: 1
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FLASK_DEBUG: 1
+      PACKAGE_NAME: ${PACKAGE_NAME}
       RUN_IN_WATCH_MODE: 1
       EXEC_BEFORE: |
         export PYTHONPATH=$$PYTHONPATH:/tmp/unpacked; \
         unzip -o /packages/${PACKAGE_NAME} -d /tmp/unpacked/
-    ports:
-      - 5000:80
     volumes:
-      - ./packages:/packages
+      - ./packages/${PACKAGE_NAME}:/packages/${PACKAGE_NAME}
       - ./handlers:/var/task
 
   provisioner:
     image: akino1976/aws-local-provisioner
     environment:
       S3_HOST: aws-mock:3000
-      AWS_LOCAL_TEMPLATE_PATH: /templates/aws-mock-resources.yaml
+      AWS_LOCAL_TEMPLATE_PATH: /aws-local/aws-mock-resource.yaml
     volumes:
-      - ./aws-mock-resource.yaml:/templates/aws-mock-resources.yaml
+      - ./aws-mock-resource.yaml:/aws-local/aws-mock-resource.yaml
     depends_on:
       - aws-mock
 

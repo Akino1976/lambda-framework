@@ -1,12 +1,11 @@
 import os
 import sys
 import logging
+import requests
+import importlib
 
 from typing import Any, Dict, Callable, List
 from types import ModuleType
-
-import requests
-
 from pytest_bdd import when, parsers
 
 import helpers.utils as utils
@@ -25,7 +24,7 @@ def call_callable(request: Any, callable_path: str, parameters: Dict[str, Any], 
         request.return_value = callable(**parameters)
 
     except Exception as exception:
-        LOGGER.exception(f'Exception in when calling {callable_path}')
+        logger.exception(f'Exception in when calling {callable_path}')
 
         request.raised_exception = exception
 
