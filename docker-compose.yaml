@@ -1,43 +1,39 @@
-version: "2"
+version: '3.8'
 
 services:
 
   package:
     image: akino1976/lambda-packer
+    container_name: lambda-framework
     command: ${PACKAGE_NAME}
+    networks:
+      - internal
     volumes:
       - ./handlers:/app/src
       - ./packages:/packages
 
-  lambdaserver-base:
-    image: akino1976/lambda-server
+  lambdaserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - internal
     environment:
-      PYTHONDONTWRITEBYTECODE: 1
-      S3_HOST: aws-mock:3000
-      ENVIRONMENT: docker
       VERSION: ${VERSION}
       AWS_REGION: ${AWS_REGION}
-      APP_LOG_STYLE: text
-      APP_NAME: bi-framework
-      APP_COMPONENT: data_integration
-      INPUT_BUCKET: bi-framework-data-lake-docker-eu-west-1
       PACKAGE_NAME: ${PACKAGE_NAME}
-    volumes:
-      - ./tools/awsmock-credentials:/root/.aws/credentials
-
-  lambdaserver:
-    extends:
-      service: lambdaserver-base
-      file: docker-compose.yaml
     ports:
       - 80
     volumes:
       - ./packages/${PACKAGE_NAME}:/packages/${PACKAGE_NAME}
+      - ./tools/awsmock-credentials /root/.aws/credentials
 
   lambdaserver-watch:
-    extends:
-      service: lambdaserver-base
-      file: docker-compose.yaml
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - internal
     environment:
       RUN_IN_WATCH_MODE: 1
       PYTHONDONTWRITEBYTECODE: 1
@@ -51,9 +47,12 @@ services:
     volumes:
       - ./packages/${PACKAGE_NAME}:/packages/${PACKAGE_NAME}
       - ./handlers:/var/task
+      - ./tools/awsmock-credentials:/root/.aws/credentials
 
   provisioner:
     image: akino1976/aws-local-provisioner
+    networks:
+      - internal
     environment:
       S3_HOST: aws-mock:3000
       AWS_LOCAL_TEMPLATE_PATH: /aws-local/aws-mock-resource.yaml
@@ -64,6 +63,8 @@ services:
 
   aws-mock:
     image: localstack/localstack:0.8.6
+    networks:
+      - internal
     environment:
       DEFAULT_REGION: eu-west-1
       SERVICES: s3:3000
@@ -73,3 +74,7 @@ services:
       DEBUG: 0
     ports:
       - 3000
+
+networks:
+  internal:
+    driver: bridge
