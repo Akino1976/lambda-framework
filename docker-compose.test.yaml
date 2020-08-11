@@ -1,8 +1,8 @@
-version: '2'
+version: '3.8'
 
 services:
 
-  unittests-base:
+  unittests:
     image: unittests-bi-framework:${VERSION}
     build:
       context: tests/unittests
@@ -25,25 +25,21 @@ services:
     volumes:
       - ./tools/awsmock-credentials:/root/.aws/credentials
       - ./packages:/packages
-      - ./handlers:/tmp/handlers
-
-  unittests:
-    extends:
-      service: unittests-base
-      file: docker-compose.test.yaml
+      - ./handlers:/app/src
 
   unittests-watch:
-    extends:
-      service: unittests-base
-      file: docker-compose.test.yaml
+    build:
+      context: tests/unittests
+      dockerfile: Dockerfile
     environment:
-      EXEC_BEFORE: export PYTHONPATH=$$PYTHONPATH:/tmp/handlers
-    command: ptw --ext=py,feature --ignore=/.cache/** --config pytest.cfg -p --pdb
+      EXEC_BEFORE: export PYTHONPATH=$$PYTHONPATH:/app/src
+    entrypoint: ptw
+    command: --ext=py,feature --ignore=/.cache/** --config pytest.cfg -p --pdb
     volumes:
       - ./tests/unittests:/unittests
-      - ./handlers:/tmp/handlers
+      - ./handlers:/app/src
 
-  systemtests-base:
+  systemtests:
     image: systemtests-bi-framework:${VERSION}
     build:
       context: tests/systemtests
@@ -51,30 +47,33 @@ services:
       args:
         PYPI_USERNAME: ${PYPI_USERNAME}
         PYPI_PASSWORD: ${PYPI_PASSWORD}
+    networks:
+      - internal
     environment:
       S3_HOST: aws-mock:3000
       PYTHONDONTWRITEBYTECODE: 1
       AWS_REGION: ${AWS_REGION}
       INPUT_BUCKET: bi-framework-data-lake-docker-eu-west-1
-    volumes:
-      - ./tools/awsmock-credentials:/root/.aws/credentials
-
-  systemtests:
-    extends:
-      service: systemtests-base
-      file: docker-compose.test.yaml
     depends_on:
       - lambdaserver
 
   systemtests-watch:
-    extends:
-      service: systemtests-base
-      file: docker-compose.test.yaml
+    build:
+      context: tests/systemtests
+      dockerfile: Dockerfile
+    networks:
+      - internal
     entrypoint: ptw
     command: --ext=py,feature --ignore=/.cache/** --config pytest.cfg -p
     volumes:
       - ./tests/systemtests:/systemtests
+      - ./tools/awsmock-credentials:/root/.aws/credentials
     links:
       - lambdaserver-watch:lambdaserver
     depends_on:
       - lambdaserver-watch
+
+
+networks:
+  internal:
+    driver: bridge

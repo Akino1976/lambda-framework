@@ -1,21 +1,7 @@
 import pytest
 import datetime
-from dateutil.tz import *
+
 from typing import Dict, Optional, Any, Callable, List
-
-
-@pytest.fixture
-def mock_s3_fraud_data():
-    return [
-        {
-            'Key': 'somefile',
-            'LastModified': datetime.datetime.now(tzlocal()),
-            'ETag': 'd2d73ea027864e6b4548d7e07437029e',
-            'Size': 1574,
-            'StorageClass': 'STANDARD'
-        }
-    ]
-
 
 @pytest.fixture
 def parameters() -> Dict[str, Any]:

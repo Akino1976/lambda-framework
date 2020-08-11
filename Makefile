@@ -45,31 +45,19 @@ package_name:
 build-%:
 	docker-compose $(COMPOSE_TEST_FLAGS) build $*
 
-run-local: build-app
-	docker-compose $(COMPOSE_FLAGS) run --rm app
-
-run-python:
-	docker-compose $(COMPOSE_FLAGS) run --rm init-python
-
-run-detached: build-app
-	docker-compose $(COMPOSE_FLAGS) run -d app
-
-run-storage:
-	docker-compose $(COMPOSE_FLAGS) run --rm storage
-
 package-lambda:
 	docker-compose $(COMPOSE_DEFAULT_FLAGS) run --rm package
 
 setup-local-environment: package-lambda provision
 
-unittest: build-app mock-provision
-	docker-compose $(COMPOSE_TEST_FLAGS) run --rm unittest
+unittests: build-unittests setup-local-environment
+	docker-compose $(COMPOSE_TEST_FLAGS) run --rm unittests
 
-unittest-watch: build-app mock-provision
-	docker-compose $(COMPOSE_TEST_FLAGS) run --rm unittest-watch
+unittests-watch: build-unittests setup-local-environment
+	docker-compose $(COMPOSE_TEST_FLAGS) run --rm unittests-watch
 
 systemtests: build-systemtests setup-local-environment
-	docker-compose $(COMPOSE_TEST_FLAGS) run --rm --service-ports systemtests
+	docker-compose $(COMPOSE_TEST_FLAGS) run --rm systemtests
 
 systemtests-watch: build-systemtests setup-local-environment
 	docker-compose $(COMPOSE_TEST_FLAGS) run --rm systemtests-watch
