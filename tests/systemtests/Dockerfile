@@ -1,4 +1,6 @@
-FROM python:3.7-alpine3.10 as builder
+ARG ALPINE_VERSION=3.11
+ARG PYTHON_VERSION=3.8.3
+FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION} as builder
 
 ENV PYTHONUNBUFFERED=1
 ENV S3_HOST=aws-mock:3000
@@ -12,7 +14,7 @@ RUN pip install wheel
 COPY requirements.txt /tmp/requirements.txt
 RUN pip wheel -w /wheelhouse -r /tmp/requirements.txt
 
-FROM python:3.7-alpine3.10
+FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION}
 
 COPY --from=builder /wheelhouse /wheelhouse
 COPY requirements.txt /tmp/requirements.txt
