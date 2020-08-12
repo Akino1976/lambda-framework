@@ -14,7 +14,7 @@ services:
 
   lambdaserver:
     build:
-      context: .
+      context: ./tests
       dockerfile: Dockerfile
     networks:
       - internal
@@ -26,11 +26,11 @@ services:
       - 80
     volumes:
       - ./packages/${PACKAGE_NAME}:/packages/${PACKAGE_NAME}
-      - ./tools/awsmock-credentials /root/.aws/credentials
+      - ./tests/tools/awsmock-credentials:/root/.aws/credentials
 
   lambdaserver-watch:
     build:
-      context: .
+      context: ./tests
       dockerfile: Dockerfile
     networks:
       - internal
@@ -47,7 +47,7 @@ services:
     volumes:
       - ./packages/${PACKAGE_NAME}:/packages/${PACKAGE_NAME}
       - ./handlers:/var/task
-      - ./tools/awsmock-credentials:/root/.aws/credentials
+      - ./tests/tools/awsmock-credentials:/root/.aws/credentials
 
   provisioner:
     image: akino1976/aws-local-provisioner

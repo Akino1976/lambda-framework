@@ -62,7 +62,6 @@ systemtests: build-systemtests setup-local-environment
 systemtests-watch: build-systemtests setup-local-environment
 	docker-compose $(COMPOSE_TEST_FLAGS) run --rm systemtests-watch
 
-
 tests: unit-test system-test
 
 provision:

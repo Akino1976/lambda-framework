@@ -23,7 +23,6 @@ services:
       INPUT_BUCKET: bi-framework-docker-eu-west-1
       PACKAGE_NAME: ${PACKAGE_NAME}
     volumes:
-      - ./tools/awsmock-credentials:/root/.aws/credentials
       - ./packages:/packages
       - ./handlers:/app/src
 
@@ -67,12 +66,11 @@ services:
     command: --ext=py,feature --ignore=/.cache/** --config pytest.cfg -p
     volumes:
       - ./tests/systemtests:/systemtests
-      - ./tools/awsmock-credentials:/root/.aws/credentials
+      - ./tests/tools/awsmock-credentials:/root/.aws/credentials
     links:
       - lambdaserver-watch:lambdaserver
     depends_on:
       - lambdaserver-watch
-
 
 networks:
   internal:

@@ -1,4 +1,6 @@
-FROM python:3.7-alpine3.10
+ARG ALPINE_VERSION=3.11
+ARG PYTHON_VERSION=3.8.3
+FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION}
 
 ARG PYPI_USERNAME
 ARG PYPI_PASSWORD
@@ -6,7 +8,7 @@ ARG PYPI_PASSWORD
 RUN apk add --no-cache gettext
 RUN pip install wheel
 
-
+COPY awsmock-credentials /root/.aws/credentials
 COPY . /usr/unittests
 WORKDIR /usr/unittests
 
