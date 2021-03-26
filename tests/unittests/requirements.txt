@@ -1,4 +1,4 @@
-PyYAML==5.1.2
+PyYAML==5.4
 pytest-bdd==3.2.1
 pytest-xdist==1.30.0
 pytest-watch==4.2.0
