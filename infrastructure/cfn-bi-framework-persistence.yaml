@@ -7,9 +7,9 @@ Parameters:
   Environment:
     Description: Environment to deploy to.
     Type: String
-    Default: test
+    Default: docker
     AllowedValues:
-      - dev
+      - docker
       - test
       - prod
 
@@ -21,7 +21,7 @@ Parameters:
 Mappings:
 
   EnvMap:
-    dev:
+    docker:
       LambdaFunctionsBucketName: bi-lambdafunctions-dev
       InputBucket: !Sub ${ServiceName}-data-lake-dev
       OutputBucket: bambora-bi-storage-formatted-dev
@@ -29,10 +29,6 @@ Mappings:
       LambdaFunctionsBucketName: bi-ambdafunctions-test-eu-west-1
       InputBucket: !Sub ${ServiceName}-data-lake-test
       OutputBucket: bambora-bi-storage-formatted-test-eu-west-1
-    prod:
-      LambdaFunctionsBucketName: bi-lambdafunctions-prod-eu-west-1
-      InputBucket: !Sub ${ServiceName}-data-lake-prod
-      OutputBucket: bambora-bi-storage-formatted-prod-eu-west-1
 
 Resources:
 
@@ -80,6 +76,11 @@ Resources:
             - Effect: Allow
               Action: logs:CreateLogGroup
               Resource: !Sub arn:aws:logs:${AWS::Region}::${AWS::AccountId}:*
+
+  LambdaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !FindInMap [EnvMap, !Ref Environment, LambdaFunctionsBucketName]
 
   DataLakeBucket:
     Type: AWS::S3::Bucket
@@ -192,55 +193,32 @@ Resources:
       Queues:
         - !Ref DataLakeQueue
 
-  BiLambdaFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Sub ${ServiceName}-${Environment}-${AWS::Region}
-      Code:
-        S3Bucket: !FindInMap [EnvMap, !Ref Environment, LambdaFunctionsBucketName]
-        S3Key: !Sub ${ServiceName}/handlers-pkg.${Version}.zip
-      Role: !GetAtt LambdaRole.Arn
-      Timeout: 900
-      Handler: lambda_function.handle_event
-      Runtime: python3.6
-      MemorySize: 3008
-      Environment:
-        Variables:
-          VERSION: !Ref Version
-          ENVIRONMENT: !Ref Environment
-          APP_LOG_STYLE: json
-          APP_NAME: ${ServiceName}
-          APP_COMPONENT: file_slicer
-          INPUT_BUCKET: !FindInMap [EnvMap, !Ref Environment, InputBucket]
-      DeadLetterConfig:
-        TargetArn: !GetAtt DataLakeDeadLetterQueue.Arn
-      Tags:
-        - Key: Name
-          Value: !Sub bi-file-slicer-all
-        - Key: Component
-          Value: !Ref ServiceName
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: BusinessArea
-          Value: BusinessIntelligence
-        - Key: InfrastructureType
-          Value: Application/Service
-        - Key: Access
-          Value: Internal
-
-  InternalSlicerNotificationsPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref FileSlicerFunction
-      Action: lambda:InvokeFunction
-      Principal: sqs.amazonaws.com
-
-  InternalFunctionEventSourceMapping:
-    Type: AWS::Lambda::EventSourceMapping
-    Properties:
-      BatchSize: 1
-      Enabled: true
-      EventSourceArn: !GetAtt InternalNotifications.Arn
-      FunctionName: !GetAtt FileFormatterFunction.Arn
-
-
+Outputs:
+  QueueURL:
+    Description: URL SQS Queue
+    Value: !Ref DataLakeQueue
+  QueueARN:
+    Description: ARN SQS Queue
+    Value: !GetAtt DataLakeQueue.Arn
+    Export: 
+      Name: !Sub ${AWS::StackName}-SQSArn
+  QueueName:
+    Description: Name of  SQS Queue
+    Value:
+      Fn::GetAtt:
+        - "DataLakeQueue"
+        - "QueueName"
+  IAMArn:
+    Description: Arn of iam
+    Value: !GetAtt LambdaRole.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-IAMRole
+  S3Bucket:
+    Description: Bucket Created
+    Value: !Ref DataLakeBucket
+  SnsURL:
+    Description: SNS Created
+    Value: !Ref InternalNotificationsTopic
+  SnsARN:
+    Description: SNS Created ARN
+    Value: !GetAtt InternalNotificationsTopic.Arn

@@ -1,80 +1,35 @@
-version: '3.8'
-
+version: "3.9"
+networks:
+  lambda_bridge:
+    external: false
+    name: lambda_bridge
 services:
 
-  package:
-    image: akino1976/lambda-packer
-    container_name: lambda-framework
-    command: ${PACKAGE_NAME}
-    networks:
-      - internal
-    volumes:
-      - ./handlers:/app/src
-      - ./packages:/packages
-
-  lambdaserver:
-    build:
-      context: ./tests
-      dockerfile: Dockerfile
-    networks:
-      - internal
+  localstack:
+    image: localstack/localstack:${LOCAL_STACK}
     environment:
-      VERSION: ${VERSION}
-      AWS_REGION: ${AWS_REGION}
-      PACKAGE_NAME: ${PACKAGE_NAME}
+      - SERVICES=${SERVICES-s3,sqs,sns,iam,lambda,cloudformation, cloudwatch}
+      - HOSTNAME=${HOSTNAME-localhost}
+      - HOSTNAME_EXTERNAL=${HOSTNAME_EXTERNAL-localhost}
+      - DEFAULT_REGION=${DEFAULT_REGION-eu-west-1}
+      - DEBUG=${DEBUG-1}
     ports:
-      - 80
-    volumes:
-      - ./packages/${PACKAGE_NAME}:/packages/${PACKAGE_NAME}
-      - ./tests/tools/awsmock-credentials:/root/.aws/credentials
-
-  lambdaserver-watch:
-    build:
-      context: ./tests
-      dockerfile: Dockerfile
+      - 4566:4566
     networks:
-      - internal
-    environment:
-      RUN_IN_WATCH_MODE: 1
-      PYTHONDONTWRITEBYTECODE: 1
-      PYTHONUNBUFFERED: 1
-      FLASK_DEBUG: 1
-      PACKAGE_NAME: ${PACKAGE_NAME}
-      RUN_IN_WATCH_MODE: 1
-      EXEC_BEFORE: |
-        export PYTHONPATH=$$PYTHONPATH:/tmp/unpacked; \
-        unzip -o /packages/${PACKAGE_NAME} -d /tmp/unpacked/
-    volumes:
-      - ./packages/${PACKAGE_NAME}:/packages/${PACKAGE_NAME}
-      - ./handlers:/var/task
-      - ./tests/tools/awsmock-credentials:/root/.aws/credentials
-
-  provisioner:
-    image: akino1976/aws-local-provisioner
-    networks:
-      - internal
-    environment:
-      S3_HOST: aws-mock:3000
-      AWS_LOCAL_TEMPLATE_PATH: /aws-local/aws-mock-resource.yaml
-    volumes:
-      - ./aws-mock-resource.yaml:/aws-local/aws-mock-resource.yaml
-    depends_on:
-      - aws-mock
+      - lambda_bridge
 
   aws-mock:
-    image: localstack/localstack:0.8.6
-    networks:
-      - internal
+    container_name: aws-cli-docker-${REPOSITORY}:${VERSION}
+    build:
+      context: ./infrastructure
+      dockerfile: Dockerfile
     environment:
-      DEFAULT_REGION: eu-west-1
-      SERVICES: s3:3000
-      FORCE_NONINTERACTIVE: 'true'
-      HOSTNAME: aws-mock
-      HOSTNAME_EXTERNAL: aws-mock
-      DEBUG: 0
-    ports:
-      - 3000
-
-networks:
-  internal:
-    driver: bridge
+      AWS_ACCESS_KEY_ID: none
+      AWS_SECRET_ACCESS_KEY: none
+      AWS_REGION: ${AWS_REGION-eu-west-1}
+      SERVICENAME: ${REPOSITORY}
+      ENVIRONMENT: docker
+    networks:
+      - lambda_bridge
+    depends_on:
+      - localstack

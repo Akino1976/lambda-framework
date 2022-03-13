@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: Business Intelligence persistence infrastructure
+
+Parameters:
+
+  Environment:
+    Description: Environment to deploy to.
+    Type: String
+    Default: docker
+    AllowedValues:
+      - docker
+      - test
+      - prod
+
+  ServiceName:
+    Description: The name of the service
+    Type: String
+    Default: ${ServiceName}
+  
+Mappings:
+
+  EnvMap:
+    docker:
+      LambdaFunctionsBucketName: bi-lambdafunctions-dev
+      InputBucket: !Sub ${ServiceName}-data-lake-dev
+      OutputBucket: bambora-bi-storage-formatted-dev
+    test:
+      LambdaFunctionsBucketName: bi-ambdafunctions-test-eu-west-1
+      InputBucket: !Sub ${ServiceName}-data-lake-test
+      OutputBucket: bambora-bi-storage-formatted-test-eu-west-1
+
+Resources:
+  BiLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ServiceName}-${Environment}-${AWS::Region}
+      Runtime: python3.9
+      Role: !ImportValue bi-framework-docker-IAMRole
+      Handler: index.handle_event
+      Code:
+        ZipFile: |
+          import json
+          from typing import Dict, Any
+          def handle_event(event: Dict[str, Any], context: object):
+              return json.dumps(dict(hello='World'))
+      Description: Invoke a function during stack creation.
+      TracingConfig:
+        Mode: Active
+
+  InternalSlicerNotificationsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref BiLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: sqs.amazonaws.com
+
+  InternalFunctionEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      Enabled: true
+      EventSourceArn: !ImportValue bi-framework-docker-SQSArn
+      FunctionName: !GetAtt BiLambdaFunction.Arn

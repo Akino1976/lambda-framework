@@ -1,22 +1,36 @@
-PROJECT := bi-framework
+REPOSITORY := bi-framework
 VERSION ?= commit_$(shell git rev-parse --short HEAD)
-
+LOCAL_STACK=0.14.1
 CREDENTIALS_VAR := test
 PREBUILD_DATE := 2018-03-07
-
-PROFILE := solita
 AWS_REGION := eu-west-1
 ENVIRONMENT := test
-
+AWS_IMAGE_ID := $(shell docker ps --filter ancestor=localstack/localstack:$(LOCAL_STACK) --format {{.ID}})
 PACKAGE_NAME := handlers-pkg.$(VERSION).zip
 
-export PROJECT
+export REPOSITORY
 export VERSION
 export CREDENTIALS_VAR
 export PACKAGE_NAME
+export LOCAL_STACK
 
 COMPOSE_DEFAULT_FLAGS := -f docker-compose.yaml
 COMPOSE_TEST_FLAGS := $(COMPOSE_DEFAULT_FLAGS) -f docker-compose.test.yaml
+
+
+create-network:
+	@echo "=>  Creating network 'lambda_bridge'"
+	@docker network create -d bridge lambda_bridge 2>/dev/null || true
+
+.PHONY: mock-aws
+mock-aws: create-network
+	@echo "=>  Creating aws resources"
+	@if [ ! -z ${AWS_IMAGE_ID} ]; then\
+    	docker stop $(AWS_IMAGE_ID); \
+    	docker rm $(AWS_IMAGE_ID); \
+	fi
+	@docker-compose -f docker-compose.yaml run --rm aws-mock
+
 
 validate-templates:
 	aws --profile $(PROFILE) cloudformation validate-template --template-body file://infrastructure/cfn-$(PROJECT)-persistence.yaml --region $(AWS_REGION)
